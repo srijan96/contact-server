@@ -7,7 +7,7 @@ app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html');
 });
 
-var current_word = "zebra";
+var current_word = "";
 var revealed_length = 1;
 var current_question = "";
 var current_answer = "";
@@ -59,8 +59,18 @@ io.on('connection', function(socket){
       io.emit('game start failed');
     } else if(currentThinker >= leaderBoard.length){
         currentThinker = currentThinker % leaderBoard.length;
-        io.emit('chat message', "Round End");
-        io.emit('Round End');
+        io.emit('chat message', "Game End");
+        io.emit('game end');
+        current_word = "";
+        revealed_length = 1;
+        current_question = "";
+        current_answer = "";
+        current_questioner = "";
+        contacts = [];
+        leaderBoard = [];
+        lockState = "";
+        currentThinker = 0;
+        gameStarted = false;
     } else {
       io.emit('chat message', "currentThinker " + currentThinker + leaderBoard[currentThinker][0]);
       currentThinker++;
@@ -191,6 +201,7 @@ io.on('connection', function(socket){
 		}
         if(revealed_length >= current_word.length) {
           io.emit('chat message', "round ended, word is " + current_word);
+          io.emit('round end');
         }
       }
       lockState = "";
