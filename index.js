@@ -295,7 +295,7 @@ io.on('connection', function(socket){
     			if(leaderBoard[j][0] === user) 
     				break;
     		}
-    		var guess = msg.substring(6, msg.length - 6);
+    		var guess = msg.substr(6);
 		console.log(guess);
 	    	if(guess ===current_word) { 
 	    		socket.emit("chat message", "Correct guess :" + guess);
