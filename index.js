@@ -283,8 +283,9 @@ io.on('connection', function(socket){
   });
 
   socket.on("send message", function(user, message){
-    console.log("Multicast message");
+    console.log("Multicast message : " + message);
     var msg = message.toLowerCase();
+    console.log(msg);
     if(msg.startsWith("guess=")) {
     	if(user === leaderBoard[currentThinker - 1][0] || user === current_questioner) {
     		socket.emit("chat message","Not eligible to guess");
@@ -294,7 +295,8 @@ io.on('connection', function(socket){
     			if(leaderBoard[j][0] === user) 
     				break;
     		}
-    		var guess = msg.substring(6, msg.legth - 6);
+    		var guess = msg.substring(6, msg.length - 6);
+		console.log(guess);
 	    	if(guess ===current_word) { 
 	    		socket.emit("chat message", "Correct guess :" + guess);
 	    		leaderBoard[j] += 5*(current_word.length - revealed_length);
