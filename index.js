@@ -271,7 +271,7 @@ io.on('connection', function(socket){
       io.emit("The revealed word now is " + current_word.substring(0,revealed_length));
       io.emit('enable question');
       io.emit('update score', leaderBoard);
-      io.emit('reveal word',current_word.substring(0,revealed_length), current_word-revealed_length);
+      io.emit('reveal word',current_word.substring(0,revealed_length), current_word.length -revealed_length);
       io.emit("refresh data", leaderBoard);
   } 
   console.log("147");
