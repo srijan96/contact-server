@@ -284,7 +284,33 @@ io.on('connection', function(socket){
 
   socket.on("send message", function(user, message){
     console.log("Multicast message");
-    io.emit("chat message", user+": "+message);
+    var msg = message.toLowerCase();
+    if(msg.startsWith("guess=")) {
+    	if(user === leaderBoard[currentThinker - 1][0] || user === current_questioner) {
+    		socket.emit("chat message","Not eligible to guess");
+    	} else {
+    		var j = -1;
+    		for(j = 0; j < leaderBoard.length; j++) {
+    			if(leaderBoard[j][0] === user) 
+    				break;
+    		}
+    		var guess = msg.substring(6, msg.legth - 6);
+	    	if(guess ===current_word) { 
+	    		socket.emit("chat message", "Correct guess :" + guess);
+	    		leaderBoard[j] += 5*(current_word.length - revealed_length);
+	    		io.emit('chat message', "Round ended. The word was " + current_word + ". Baton passes to next thinker.");
+				gameStarted = false;
+				revealed_length = 1;
+				io.emit('round end');
+				io.emit("refresh data", leaderBoard);
+	    	} else {
+	    		socket.emit("chat message", "Wrong guess :" + guess);
+	    		leaderBoard[j] -= 5*revealed_length;
+	    	}
+	    }
+    } else {
+    	io.emit("chat message", user+": "+message);
+    }
   });
 
 });
