@@ -26,40 +26,80 @@ function logState() {
 	console.log("Question = " + current_question);
 	console.log("Answer = " + current_answer);
 	console.log("LockState = " + lockState);
-    console.log("currentThinker = " + currentThinker);
+  console.log("currentThinker = " + currentThinker);
 	console.log("Contacts = " + contacts);
 	console.log("leaderBoard = " + leaderBoard);
 }
 
 io.on('connection', function(socket){
-  //Handle Add User
-  socket.on('add user', function(user){
-  	var existing = false;
-  	for(var i=0;i<leaderBoard.length;i++) {
-  		if(leaderBoard[i][0] === user) {
-  			existing = true;
-  			break;
-  		}
-  	}
-    if(user == "none" || existing == true) {
-      socket.emit('chat message', "add user failed" + user);
-      socket.emit('login failed');
-    } else {
-  	  leaderBoard.push([user,0]);
-      io.emit('chat message', "add user" + user);
-      socket.emit('login successful', gameStarted);
-      io.emit("refresh data", leaderBoard);
+  socket.on('disconnect', function() {
+    console.log(socket.id + " disconnected");
+    for(var i=0;i<leaderBoard.length;i++) {
+      if(leaderBoard[i][2] === socket.id) {
+        if(i == currentThinker - 1) {
+          io.emit("chat message", leaderBoard[i][0] + "(current thinker) left the game. ");
+          gameStarted = false;
+          revealed_length = 1;
+          io.emit('round end');
+        } else if(leaderBoard[i][0] === lockState) {
+          io.emit("chat message", leaderBoard[i][0] + "(current questioner) left the game");
+          lockState = "";
+          current_question = "";
+          current_answer = "";
+          io.emit('enable question');
+        } else {
+          io.emit("chat message", leaderBoard[i][0] + " left the game");
+        }
+        leaderBoard[i][2] = "";
+        break;
+      }
     }
     logState();
   });
+  //Handle Add User
+  socket.on('add user', function(user){
+  	console.log("Adding user from socket : " + socket.id);
+    
+    var existing = -1;
+    for(var i=0;i<leaderBoard.length;i++) {
+        if(leaderBoard[i][0] === user) {
+            existing = i;
+            break;
+        }
+    }
 
+    if(user == "") {
+      socket.emit('chat message', "add user failed" + user);
+      socket.emit('login failed');
+    } else {
+      if(existing != -1) {
+        if(leaderBoard[existing][2] != "") {
+          socket.emit('login failed');
+        } else {
+          leaderBoard[existing][2] = socket.id;
+          io.emit('chat message', user + "joined back");
+          socket.emit('login successful', gameStarted, lockState, current_question, current_word.substring(0,revealed_length));
+          socket.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
+          io.emit("refresh data", leaderBoard);
+        }
+      } else {
+        leaderBoard.push([user,0,socket.id]);
+        io.emit('chat message', user + "joined the game");
+        socket.emit('login successful', gameStarted, lockState, current_question, current_word.substring(0,revealed_length));
+        socket.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
+        io.emit("refresh data", leaderBoard);
+      }
+    }
+    logState();
+  });
+  
   socket.on('start', function(){
     if(leaderBoard.length == 0) {
-      io.emit('chat message', "game start failed");
+      socket.emit('chat message', "game start failed");
       io.emit('game start failed');
     } else if(currentThinker >= leaderBoard.length){
         currentThinker = currentThinker % leaderBoard.length;
-        io.emit('chat message', "Game End");
+        io.emit('chat message', "End of Game");
         io.emit('game end');
         current_word = "";
         revealed_length = 1;
@@ -71,28 +111,40 @@ io.on('connection', function(socket){
         lockState = "";
         currentThinker = 0;
         gameStarted = false;
+    } else if(gameStarted == true){
+        socket.emit('chat message', "Game has already started");
     } else {
-      io.emit('chat message', "currentThinker " + currentThinker + leaderBoard[currentThinker][0]);
+   	  while(currentThinker < leaderBoard.length && leaderBoard[currentThinker][2] === "")
+      	currentThinker++;
+      io.emit('chat message', leaderBoard[currentThinker][0] + " is thinking of a word. Hang back.");
       currentThinker++;
       gameStarted = true;
       io.emit('game started', leaderBoard[currentThinker - 1][0]);
+      current_word = "";
+      revealed_length = 1;
+      current_question = "";
+      current_answer = "";
+      current_questioner = "";
+      contacts = [];
+      lockState = "";
     }
     logState();
   });
   //Handle Add Word
   socket.on('add word', function(user, word){
+    word = word.toLowerCase();
   	current_word = word;
-    io.emit('chat message', "add word by " + user);
+    io.emit('chat message', user + "has added a word. You may ask a question whose ans starts with " + word[0]);
     socket.emit('chat message', "add word by " + user + " " + word);
     io.emit('enable question');
-    io.emit('reveal word',current_word.substring(0,revealed_length));
+    io.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
     logState();
   });
   //Handle Lock
   socket.on('lock question', function(user){
     if(lockState == "") {
     	lockState = user;
-      io.emit('chat message', "locked by " + user);
+      io.emit('chat message', user + " is currently asking a question. Wait for them to finish");
       socket.emit('ask question');
       io.emit('disable question');
      } else {
@@ -104,18 +156,19 @@ io.on('connection', function(socket){
   socket.on('unlock question', function(user){
     
     if(lockState == user) {
-		io.emit('chat message', "unlocked by " + user);
-		lockState = "";
-		current_question = "";
-    current_answer = "";
-    io.emit('enable question');
+		  io.emit('chat message', "Current question by" + user + "has concluded");
+		  lockState = "";
+      current_question = "";
+      current_answer = "";
+      io.emit('enable question');
     } else {
-		io.emit('chat message', "Unlock Failed. Not locked by " + user);
+		  io.emit('chat message', "Unlock Failed. Not locked by " + user);
     }
     logState();
   });
   //Handle QA
   socket.on('handle qa', function(user, question, ans){
+    ans = ans.toLowerCase();
   	var revealed = current_word.substring(0,revealed_length);
   	if(lockState != user) {
   		io.emit('chat message', "add qa failed, not locked by " + user);
@@ -123,13 +176,13 @@ io.on('connection', function(socket){
   	else if(current_question != "") {
   		io.emit('chat message', "add qa failed, question already exists " + current_question);
   	} else if(ans.startsWith(revealed) == false) {
-  		socket.emit('chat message', "add qa failed, answer doesn't start with revealed word" + ans + "("+ revealed + ")");
+  		socket.emit('chat message', "Please check. Your question's answer doesn't start with revealed word" + ans + "("+ revealed + ")");
   	} else {
 	  	current_question = question;
 	  	current_answer = ans;
 	  	current_questioner = user;
 	  	contacts = [];
-	    io.emit('chat message', "added question by " + user + " " + question);
+	    io.emit('chat message', user + " has added a new question");
       socket.emit('chat message', "added question " + question + " " + ans);
       io.emit('question added', user, current_question);
     }
@@ -137,6 +190,7 @@ io.on('connection', function(socket){
   });
   //Handle Contact
   socket.on('handle contact', function(user, ans){
+    ans = ans.toLowerCase();
     if(lockState == user) {
       io.emit('chat message', "contact failed, question asked by self");
       console.log(contacts);
@@ -157,14 +211,16 @@ io.on('connection', function(socket){
       if(amend == false) {
       	contacts.push([user, ans]);
       }
-      io.emit('chat message', "contact by " + user);
-      socket.emit('chat message', "contact by " + user + " " + ans);
+      io.emit('chat message', user + " has initiated a contact");
+      socket.emit('chat message', "contact has been placed by you with answer as "  + ans + ". You may change your contact until the thinker answers.");
     }
     console.log(contacts);
     logState();
   });
   socket.on('handle answer', function(user, ans){
+    ans = ans.toLowerCase();
     console.log("119");
+    var contact_users = "";
     if(user != leaderBoard[currentThinker - 1][0]) {
       io.emit('chat message', "answer failed, not thinker" + user);
     }
@@ -176,6 +232,7 @@ io.on('connection', function(socket){
         console.log(contacts[i][1] + current_answer);
         if(contacts[i][1] == current_answer) {
           valid_contacts++;
+          contact_users+=(contacts[i][0])+", ";
           var j = -1;
           for(j = 0; j < leaderBoard.length; j++) {
           	if(leaderBoard[j][0] === contacts[i][0]) {
@@ -193,22 +250,29 @@ io.on('connection', function(socket){
         res = "Failed";
         revealed_length ++;
         var j = -1;
-		for(j = 0; j < leaderBoard.length; j++) {
-			if(leaderBoard[j][0] === current_questioner) {
-				leaderBoard[j][1] += 10*valid_contacts;
-				break;
-			}
-		}
+    		for(j = 0; j < leaderBoard.length; j++) {
+    			if(leaderBoard[j][0] === current_questioner) {
+    				leaderBoard[j][1] += 10*valid_contacts;
+    				break;
+    			}
+    		}
         if(revealed_length >= current_word.length) {
-          io.emit('chat message', "round ended, word is " + current_word);
+          io.emit('chat message', "Round ended. The word was " + current_word + ". Baton passes to next thinker.");
+          gameStarted = false;
+          revealed_length = 1;
           io.emit('round end');
         }
       }
       lockState = "";
-      io.emit('chat message', res + current_word.substring(0,revealed_length));
+      io.emit('chat message', "Question " +res);
+      io.emit("chat message", "The answer was "+ current_answer);
+      if(contact_users != "")
+        io.emit("chat message", contact_users.substring(0,contact_users.length-2)+ " correctly did a contact."); 
+      io.emit("The revealed word now is " + current_word.substring(0,revealed_length));
       io.emit('enable question');
       io.emit('update score', leaderBoard);
-      io.emit('reveal word',current_word.substring(0,revealed_length));
+      io.emit('reveal word',current_word.substring(0,revealed_length), current_word-revealed_length);
+      io.emit("refresh data", leaderBoard);
   } 
   console.log("147");
   for(var i=0; i<contacts.length; i++)
@@ -217,6 +281,12 @@ io.on('connection', function(socket){
   current_question = "";
 	logState();
   });
+
+  socket.on("send message", function(user, message){
+    console.log("Multicast message");
+    io.emit("chat message", user+": "+message);
+  });
+
 });
 
 http.listen(port, function(){
