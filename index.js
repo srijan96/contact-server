@@ -51,6 +51,7 @@ io.on('connection', function(socket){
           io.emit("chat message", leaderBoard[i][0] + " left the game");
         }
         leaderBoard[i][2] = "";
+        io.emit("refresh data", leaderBoard);
         break;
       }
     }
