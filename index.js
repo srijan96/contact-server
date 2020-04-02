@@ -94,9 +94,11 @@ io.on('connection', function(socket){
   });
   
   socket.on('start', function(){
-    if(leaderBoard.length == 0) {
-      socket.emit('chat message', "game start failed");
-      io.emit('game start failed');
+    if(gameStarted == true) {
+      	socket.emit('chat message', "Game has already started");
+    } else if(leaderBoard.length == 0){
+	socket.emit('chat message', "game start failed");
+      	io.emit('game start failed');
     } else if(currentThinker >= leaderBoard.length){
         currentThinker = currentThinker % leaderBoard.length;
         io.emit('chat message', "End of Game");
@@ -111,22 +113,20 @@ io.on('connection', function(socket){
         lockState = "";
         currentThinker = 0;
         gameStarted = false;
-    } else if(gameStarted == true){
-        socket.emit('chat message', "Game has already started");
     } else {
-   	  while(currentThinker < leaderBoard.length && leaderBoard[currentThinker][2] === "")
+        while(currentThinker < leaderBoard.length && leaderBoard[currentThinker][2] === "")
       	currentThinker++;
-      io.emit('chat message', leaderBoard[currentThinker][0] + " is thinking of a word. Hang back.");
-      currentThinker++;
-      gameStarted = true;
-      io.emit('game started', leaderBoard[currentThinker - 1][0]);
-      current_word = "";
-      revealed_length = 1;
-      current_question = "";
-      current_answer = "";
-      current_questioner = "";
-      contacts = [];
-      lockState = "";
+	io.emit('chat message', leaderBoard[currentThinker][0] + " is thinking of a word. Hang back.");
+	currentThinker++;
+	gameStarted = true;
+	io.emit('game started', leaderBoard[currentThinker - 1][0]);
+	current_word = "";
+	revealed_length = 1;
+	current_question = "";
+	current_answer = "";
+	current_questioner = "";
+	contacts = [];
+	lockState = "";
     }
     logState();
   });
@@ -298,7 +298,8 @@ io.on('connection', function(socket){
     		var guess = msg.substr(6);
 		console.log(guess);
 	    	if(guess ===current_word) { 
-	    		socket.emit("chat message", "Correct guess :" + guess);
+	    		socket.emit("chat message", "Correct guess : " + guess + ". Points added");
+			io.emit("chat message", user + " guessed the word");
 	    		leaderBoard[j][1] += 5*(current_word.length - revealed_length);
 	    		io.emit('chat message', "Round ended. The word was " + current_word + ". Baton passes to next thinker.");
 				gameStarted = false;
@@ -306,8 +307,10 @@ io.on('connection', function(socket){
 				io.emit('round end');
 				io.emit("refresh data", leaderBoard);
 	    	} else {
-	    		socket.emit("chat message", "Wrong guess :" + guess);
+	    		socket.emit("chat message", "Wrong guess : " + guess + ". Points deducted");
+			io.emit("chat message", user + " made a wrong guess");
 	    		leaderBoard[j][1] -= 5*revealed_length;
+			io.emit("refresh data", leaderBoard);
 	    	}
 	    }
     } else {
