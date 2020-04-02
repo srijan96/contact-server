@@ -287,7 +287,7 @@ io.on('connection', function(socket){
     var msg = message.toLowerCase();
     console.log(msg);
     if(msg.startsWith("guess=")) {
-    	if(user === leaderBoard[currentThinker - 1][0] || user === current_questioner) {
+    	if(gameStarted == false || user === leaderBoard[currentThinker - 1][0] || user === current_questioner) {
     		socket.emit("chat message","Not eligible to guess");
     	} else {
     		var j = -1;
