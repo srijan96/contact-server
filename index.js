@@ -299,7 +299,7 @@ io.on('connection', function(socket){
 		console.log(guess);
 	    	if(guess ===current_word) { 
 	    		socket.emit("chat message", "Correct guess :" + guess);
-	    		leaderBoard[j] += 5*(current_word.length - revealed_length);
+	    		leaderBoard[j][1] += 5*(current_word.length - revealed_length);
 	    		io.emit('chat message', "Round ended. The word was " + current_word + ". Baton passes to next thinker.");
 				gameStarted = false;
 				revealed_length = 1;
@@ -307,7 +307,7 @@ io.on('connection', function(socket){
 				io.emit("refresh data", leaderBoard);
 	    	} else {
 	    		socket.emit("chat message", "Wrong guess :" + guess);
-	    		leaderBoard[j] -= 5*revealed_length;
+	    		leaderBoard[j][1] -= 5*revealed_length;
 	    	}
 	    }
     } else {
