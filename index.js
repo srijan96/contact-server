@@ -283,41 +283,44 @@ io.on('connection', function(socket){
 	logState();
   });
 
-  socket.on("send message", function(user, message){
-    console.log("Multicast message : " + message);
-    var msg = message.toLowerCase();
-    console.log(msg);
-    if(msg.startsWith("guess=")) {
-    	if(gameStarted == false || current_word === "" || user === leaderBoard[currentThinker - 1][0] || user === current_questioner) {
-    		socket.emit("chat message","Not eligible to guess");
-    	} else {
-    		var j = -1;
-    		for(j = 0; j < leaderBoard.length; j++) {
-    			if(leaderBoard[j][0] === user) 
-    				break;
-    		}
-    		var guess = msg.substr(6);
-		console.log(guess);
-	    	if(guess ===current_word) { 
-	    		socket.emit("chat message", "Correct guess : " + guess + ". Points added");
-			io.emit("chat message", user + " guessed the word");
+  socket.on("word guess", function(user, guess){
+    console.log("Word Guess by" + user);
+
+    //get user id
+    if(gameStarted == false || current_word === "" || user === leaderBoard[currentThinker - 1][0]) {
+      socket.emit("chat message","Not eligible to guess");
+    } else {
+      var j = -1;
+      for(j = 0; j < leaderBoard.length; j++) {
+        if(leaderBoard[j][0] === user) 
+         break;
+      }
+    }
+
+    if(guess === current_word){
+      socket.emit("chat message", "Correct guess : " + guess + ". Points added");
+			io.emit("chat message", user + " guessed the word correctly");
 	    		leaderBoard[j][1] += 5*(current_word.length - revealed_length);
 	    		io.emit('chat message', "Round ended. The word was " + current_word + ". Baton passes to next thinker.");
 				gameStarted = false;
 				revealed_length = 1;
 				io.emit('round end');
 				io.emit("refresh data", leaderBoard);
-	    	} else {
-	    		socket.emit("chat message", "Wrong guess : " + guess + ". Points deducted");
-			io.emit("chat message", user + " made a wrong guess");
-	    		leaderBoard[j][1] -= 5*revealed_length;
-			io.emit("refresh data", leaderBoard);
-	    	}
-	    }
-    } else {
-    	io.emit("chat message", user+": "+message);
+    }else {
+      socket.emit("chat message", "Wrong guess : " + guess + ". Points deducted");
+      io.emit("chat message", user + " made a wrong guess");
+      leaderBoard[j][1] -= 5*revealed_length;
+      io.emit("refresh data", leaderBoard);
     }
+
   });
+
+  socket.on("send message", function(user, message){
+    console.log("Multicast message : " + message);
+    var msg = message.toLowerCase();
+    console.log(msg);
+   	io.emit("chat message", user+": "+message);
+    });
 
 });
 
