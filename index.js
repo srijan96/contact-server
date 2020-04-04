@@ -3,6 +3,8 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 5000;
 
+const levenshtein = require('js-levenshtein');
+
 app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html');
 });
@@ -181,10 +183,12 @@ io.on('connection', function(socket){
   	} else {
 	  	current_question = question;
 	  	current_answer = ans;
+      current_answer = current_answer.toLowerCase();
+      current_answer = current_answer.trim();
 	  	current_questioner = user;
 	  	contacts = [];
 	    io.emit('chat message', user + " has added a new question");
-      socket.emit('chat message', "added question " + question + " " + ans);
+      socket.emit('chat message', "added question: " + question + ", answer: " + ans);
       io.emit('question added', user, current_question);
     }
     logState();
@@ -192,6 +196,7 @@ io.on('connection', function(socket){
   //Handle Contact
   socket.on('handle contact', function(user, ans){
     ans = ans.toLowerCase();
+    ans = ans.trim();
     if(lockState == user) {
       io.emit('chat message', "contact failed, question asked by self");
       console.log(contacts);
@@ -220,6 +225,7 @@ io.on('connection', function(socket){
   });
   socket.on('handle answer', function(user, ans){
     ans = ans.toLowerCase();
+    ans = ans.trim();
     console.log("119");
     var contact_users = "";
     if(user != leaderBoard[currentThinker - 1][0]) {
@@ -231,7 +237,9 @@ io.on('connection', function(socket){
       var res = "Canceled";
       for(var i=0; i<contacts.length; i++) {
         console.log(contacts[i][1] + current_answer);
-        if(contacts[i][1] == current_answer) {
+        var levenshtein_distance = levenshtein(contacts[i][1], current_answer);
+        
+        if(contacts[i][1] == current_answer || (current_answer.length > 3 && levenshtein_distance <= 2)) {
           valid_contacts++;
           contact_users+=(contacts[i][0])+", ";
           var j = -1;
@@ -284,6 +292,8 @@ io.on('connection', function(socket){
   });
 
   socket.on("word guess", function(user, guess){
+    guess = guess.toLowerCase();
+    guess = guess.trim();
     console.log("Word Guess by" + user);
 
     //get user id
@@ -296,8 +306,8 @@ io.on('connection', function(socket){
          break;
       }
     }
-
-    if(guess === current_word){
+    var levenshtein_distance = levenshtein(guess, current_word);
+    if(guess === current_word || (current_word.length > 3 && levenshtein_distance <= 1)){
       socket.emit("chat message", "Correct guess : " + guess + ". Points added");
 			io.emit("chat message", user + " guessed the word correctly");
 	    		leaderBoard[j][1] += 5*(current_word.length - revealed_length);
