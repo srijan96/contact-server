@@ -16,6 +16,8 @@ var current_answer = "";
 var current_questioner = "";
 var contacts = [];
 var leaderBoard = [];
+var current_players = [];   // list of active players
+var passed_users = [];      // list of users who have passed the current question
 var lockState = "";
 var currentThinker = 0;
 var gameStarted = false;
@@ -31,6 +33,7 @@ function logState() {
   console.log("currentThinker = " + currentThinker);
 	console.log("Contacts = " + contacts);
 	console.log("leaderBoard = " + leaderBoard);
+  console.log("current_players = " + current_players);
 }
 
 io.on('connection', function(socket){
@@ -42,14 +45,20 @@ io.on('connection', function(socket){
           io.emit("chat message", leaderBoard[i][0] + "(current thinker) left the game. ");
           gameStarted = false;
           revealed_length = 1;
+          var leaving_user = leaderBoard[i][0];
+          current_players.splice(current_players.indexOf(leaving_user), 1);
           io.emit('round end');
         } else if(leaderBoard[i][0] === lockState) {
           io.emit("chat message", leaderBoard[i][0] + "(current questioner) left the game");
           lockState = "";
           current_question = "";
           current_answer = "";
+          var leaving_user = leaderBoard[i][0];
+          current_players.splice(current_players.indexOf(leaving_user), 1);
           io.emit('enable question');
         } else {
+          var leaving_user = leaderBoard[i][0];
+          current_players.splice(current_players.indexOf(leaving_user), 1);
           io.emit("chat message", leaderBoard[i][0] + " left the game");
         }
         leaderBoard[i][2] = "";
@@ -80,6 +89,7 @@ io.on('connection', function(socket){
           socket.emit('login failed');
         } else {
           leaderBoard[existing][2] = socket.id;
+          current_players.push(user);
           io.emit('chat message', user + "joined back");
           socket.emit('login successful', gameStarted, lockState, current_question, current_word.substring(0,revealed_length));
           socket.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
@@ -87,6 +97,7 @@ io.on('connection', function(socket){
         }
       } else {
         leaderBoard.push([user,0,socket.id]);
+        current_players.push(user);
         io.emit('chat message', user + "joined the game");
         socket.emit('login successful', gameStarted, lockState, current_question, current_word.substring(0,revealed_length));
         socket.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
@@ -137,7 +148,7 @@ io.on('connection', function(socket){
   socket.on('add word', function(user, word){
     word = word.toLowerCase();
   	current_word = word;
-    io.emit('chat message', user + "has added a word. You may ask a question whose ans starts with " + word[0]);
+    io.emit('chat message', user + " has added a word. You may ask a question whose ans starts with " + word[0]);
     socket.emit('chat message', "add word by " + user + " " + word);
     io.emit('enable question');
     io.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
@@ -159,7 +170,7 @@ io.on('connection', function(socket){
   socket.on('unlock question', function(user){
     
     if(lockState == user) {
-		  io.emit('chat message', "Current question by" + user + "has concluded");
+		  io.emit('chat message', "Current question by" + user + " has concluded");
 		  lockState = "";
       current_question = "";
       current_answer = "";
@@ -187,6 +198,7 @@ io.on('connection', function(socket){
       current_answer = current_answer.trim();
 	  	current_questioner = user;
 	  	contacts = [];
+      passed_users = [];
 	    io.emit('chat message', user + " has added a new question");
       socket.emit('chat message', "added question: " + question + ", answer: " + ans);
       io.emit('question added', user, current_question);
@@ -223,7 +235,21 @@ io.on('connection', function(socket){
     console.log(contacts);
     logState();
   });
+  socket.on('handle pass', function(user) {
+    //add user to the list of players who have passed the current question
+    if (passed_users.indexOf(user) === -1) {
+      passed_users.push(user);
+      io.emit('chat message', user + " has passed the question");
+    } 
+  });
   socket.on('handle answer', function(user, ans){
+    //if everybody hasn't made contact or pass yet, don't accept answer form thinker
+    // 2 indicates player who has set the question and the thinker
+    if (current_players.length > (contacts.length + passed_users.length + 2)) {
+      socket.emit('chat message', "Everyone hasn't made contact or passed. Give your answer again after a while.");
+      return;
+    }
+
     ans = ans.toLowerCase();
     ans = ans.trim();
     console.log("119");
@@ -253,10 +279,10 @@ io.on('connection', function(socket){
       }
       console.log("134");
       if(ans == current_answer) {
-        res = "Passed";
+        res = "Answered Correctly by Thinker";
         leaderBoard[currentThinker - 1][1] += 10;
       } else if(valid_contacts > 0) {
-        res = "Failed";
+        res = "Answered Inorrectly by Thinker";
         revealed_length ++;
         var j = -1;
     		for(j = 0; j < leaderBoard.length; j++) {
