@@ -243,13 +243,14 @@ io.on('connection', function(socket){
     } 
   });
   socket.on('handle answer', function(user, ans){
-    //if everybody hasn't made contact or pass yet, don't accept answer form thinker
-    // 2 indicates player who has set the question and the thinker
-    if (current_players.length > (contacts.length + passed_users.length + 2)) {
-      socket.emit('chat message', "Everyone hasn't made contact or passed. Give your answer again after a while.");
+    
+    //Need atleast 1 contact or all contact users to pass for thinker to proceed with answer
+    //2 because thinker and question maker is excluded
+    if(contacts.length == 0 && passed_users.length != (current_players.length-2)) {
+      socket.emit('chat message', "There has been no single contact or all users have not yet passed");
       return;
     }
-
+    
     ans = ans.toLowerCase();
     ans = ans.trim();
     console.log("119");
@@ -280,7 +281,8 @@ io.on('connection', function(socket){
       console.log("134");
       if(ans == current_answer) {
         res = "Answered Correctly by Thinker";
-        leaderBoard[currentThinker - 1][1] += 10;
+        //More points for thinker answering correctly
+        leaderBoard[currentThinker - 1][1] += 20;
       } else if(valid_contacts > 0) {
         res = "Answered Inorrectly by Thinker";
         revealed_length ++;
@@ -363,3 +365,4 @@ io.on('connection', function(socket){
 http.listen(port, function(){
   console.log('listening on *:' + port);
 });
+
