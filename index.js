@@ -316,7 +316,11 @@ io.on('connection', function(socket){
         }
       }
       console.log("134");
-      if(thinker_answer == current_answer) {
+
+      var thinker_ans_edit_distance = levenshtein(thinker_answer, current_answer);
+
+      //Match thinker answer or check if edit distance is less than 2
+      if(thinker_answer == current_answer || (current_answer.length > 3 && thinker_ans_edit_distance <=2)) {
         res = "Answered Correctly by Thinker";
         //More points for thinker answering correctly
         leaderBoard[currentThinker - 1][1] += 20;
