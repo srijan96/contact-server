@@ -2,6 +2,7 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 5000;
+require('./users.js')();
 
 const levenshtein = require('js-levenshtein');
 
@@ -25,8 +26,10 @@ var gameStarted = false;
 var questionTimeout = 0     // questionTimeout Variable 
 var hasThinkerAnswered = 0; // boolean to keep track if thinker has answered or not
 
+var players = new UserList();
+
 function logState() {
-	console.log("========================");
+	/*console.log("========================");
 	console.log("Word = " + current_word);
 	console.log("Revealed = " + current_word.substring(0,revealed_length) + " , length : ", revealed_length);
 	console.log("Questioner = " + current_questioner);
@@ -36,11 +39,12 @@ function logState() {
   console.log("currentThinker = " + currentThinker);
 	console.log("Contacts = " + contacts);
 	console.log("leaderBoard = " + leaderBoard);
-  console.log("current_players = " + current_players);
+  console.log("current_players = " + current_players);*/
 }
 
 io.on('connection', function(socket){
   socket.on('disconnect', function() {
+    players.disconnect(socket.id);
     console.log(socket.id + " disconnected");
     for(var i=0;i<leaderBoard.length;i++) {
       if(leaderBoard[i][2] === socket.id) {
@@ -73,6 +77,12 @@ io.on('connection', function(socket){
   });
   //Handle Add User
   socket.on('add user', function(user){
+    try {
+      players.connect(new User(user, socket.id));
+    } catch(err) {
+      console.log("Error : " + err);
+    }
+    
   	console.log("Adding user from socket : " + socket.id);
     
     var existing = -1;
