@@ -12,7 +12,8 @@ app.get('/', function(req, res){
 var current_word = "";
 var revealed_length = 1;
 var current_question = "";
-var current_answer = "";
+var current_answer = "";    // Answer set by question setter
+var thinker_answer = "";    // Answer given by thinker
 var current_questioner = "";
 var contacts = [];
 var leaderBoard = [];
@@ -21,6 +22,8 @@ var passed_users = [];      // list of users who have passed the current questio
 var lockState = "";
 var currentThinker = 0;
 var gameStarted = false;
+var questionTimeout = 0     // questionTimeout Variable 
+var hasThinkerAnswered = 0; // boolean to keep track if thinker has answered or not
 
 function logState() {
 	console.log("========================");
@@ -144,6 +147,7 @@ io.on('connection', function(socket){
     }
     logState();
   });
+
   //Handle Add Word
   socket.on('add word', function(user, word){
     word = word.toLowerCase();
@@ -154,6 +158,7 @@ io.on('connection', function(socket){
     io.emit('reveal word',current_word.substring(0,revealed_length), current_word.length-revealed_length);
     logState();
   });
+
   //Handle Lock
   socket.on('lock question', function(user){
     if(lockState == "") {
@@ -166,6 +171,7 @@ io.on('connection', function(socket){
     }
     logState();
   });
+  
   //Handle Unlock
   socket.on('unlock question', function(user){
     
@@ -180,6 +186,7 @@ io.on('connection', function(socket){
     }
     logState();
   });
+
   //Handle QA
   socket.on('handle qa', function(user, question, ans){
     ans = ans.toLowerCase();
@@ -202,10 +209,14 @@ io.on('connection', function(socket){
 	    io.emit('chat message', user + " has added a new question");
       socket.emit('chat message', "added question: " + question + ", answer: " + ans);
       io.emit('question added', user, current_question);
+      
+      // Wait 90 secs to give everyone time and then evaluate score 
+      questionTimeout =  setTimeout(evaluate_score, 90000);
     }
     logState();
   });
-  //Handle Contact
+  
+  //HANDLE CONTACT
   socket.on('handle contact', function(user, ans){
     ans = ans.toLowerCase();
     ans = ans.trim();
@@ -231,34 +242,60 @@ io.on('connection', function(socket){
       }
       io.emit('chat message', user + " has initiated a contact");
       socket.emit('chat message', "contact has been placed by you with answer as "  + ans + ". You may change your contact until the thinker answers.");
+      
+      //Check if all have given an input or not to end the question
+      end_ques_on_all_input();
     }
+
     console.log(contacts);
     logState();
   });
+
+  //HANDLE PASS
   socket.on('handle pass', function(user) {
     //add user to the list of players who have passed the current question
     if (passed_users.indexOf(user) === -1) {
       passed_users.push(user);
       io.emit('chat message', user + " has passed the question");
-    } 
-  });
-  socket.on('handle answer', function(user, ans){
-    
-    //Need atleast 1 contact or all contact users to pass for thinker to proceed with answer
-    //2 because thinker and question maker is excluded
-    if(contacts.length == 0 && passed_users.length != (current_players.length-2)) {
-      socket.emit('chat message', "There has been no single contact or all users have not yet passed");
-      return;
+      
+      //Check if all have given an input or not to end the question
+      end_ques_on_all_input();
     }
+  });
+
+  //ON THINKER ANSWER 
+  socket.on('handle answer', function(user, ans){
     
     ans = ans.toLowerCase();
     ans = ans.trim();
+    
+    // Set thinker answer 
+    thinker_answer = ans;
+
+    //Setting boolean to 1 ie thinker has answered
+    hasThinkerAnswered = 1;
+
+    //Check if all have given input or not to end question
+    end_ques_on_all_input();
+  });
+
+  // Checks if everybody has passed or contacted and thinker has answered to end the 90s timer
+  function end_ques_on_all_input(){
+
+    console.log("Contacts:" +contacts.length +"Passed:" + passed_users.length);
+      
+    if (contacts.length + passed_users.length + hasThinkerAnswered +1 == current_players.length){
+        clearTimeout(questionTimeout);
+
+        //timer stopped, now evaluate score needs to be called to start next question
+        evaluate_score();
+      }
+  }
+
+  //EVALUATE SCORE AFTER A QUESTION END
+  function evaluate_score(){
     console.log("119");
     var contact_users = "";
-    if(user != leaderBoard[currentThinker - 1][0]) {
-      io.emit('chat message', "answer failed, not thinker" + user);
-    }
-    else {
       console.log("124" + contacts.length);
       var valid_contacts = 0;
       var res = "Canceled";
@@ -279,7 +316,11 @@ io.on('connection', function(socket){
         }
       }
       console.log("134");
-      if(ans == current_answer) {
+
+      var thinker_ans_edit_distance = levenshtein(thinker_answer, current_answer);
+
+      //Match thinker answer or check if edit distance is less than 2
+      if(thinker_answer == current_answer || (current_answer.length > 3 && thinker_ans_edit_distance <=2)) {
         res = "Answered Correctly by Thinker";
         //More points for thinker answering correctly
         leaderBoard[currentThinker - 1][1] += 20;
@@ -300,6 +341,8 @@ io.on('connection', function(socket){
           io.emit('round end');
         }
       }
+
+
       lockState = "";
       io.emit('chat message', "Question " +res);
       io.emit("chat message", "The answer was "+ current_answer);
@@ -310,15 +353,19 @@ io.on('connection', function(socket){
       io.emit('update score', leaderBoard);
       io.emit('reveal word',current_word.substring(0,revealed_length), current_word.length -revealed_length);
       io.emit("refresh data", leaderBoard);
-  } 
-  console.log("147");
-  for(var i=0; i<contacts.length; i++)
-    contacts[i].splice(0);
-  contacts.splice(0);
-  current_question = "";
-	logState();
-  });
 
+      console.log("147");
+    for(var i=0; i<contacts.length; i++)
+      contacts[i].splice(0);
+    contacts.splice(0);
+    current_question = "";
+    thinker_answer = "";
+    current_answer = "";
+    hasThinkerAnswered = 0;     // Resetting thinker answer boolean
+	  logState();
+}
+
+  //ON WORD GUESS
   socket.on("word guess", function(user, guess){
     guess = guess.toLowerCase();
     guess = guess.trim();
