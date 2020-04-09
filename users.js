@@ -54,8 +54,6 @@ class UserList {
 			//stil active, don't overwrite
 			if(this.users[u.getName()].getActive() === true)
 				throw new CustomError("Already active user : [" + u.getName() + "]");
-
-			this.remove(u.getName());
 		} else {
 			this.thinkerOrder.push(u.getName());
 		}
