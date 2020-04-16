@@ -40,8 +40,8 @@ function logState() {
 }
 
 io.on('connection', function(socket){
-  socket.on('disconnect', function() {
-    console.log(socket.id + " disconnected");
+  socket.on('disconnect', function(reason) {
+    console.log(socket.id + " disconnected due to: " + reason);
     for(var i=0;i<leaderBoard.length;i++) {
       if(leaderBoard[i][2] === socket.id) {
         if(i == currentThinker - 1) {
