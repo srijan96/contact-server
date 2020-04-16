@@ -26,16 +26,12 @@ class User {
 		}
 		this.name = name;
 		this.socketId = socketId;
-		this.active = true;
 	}
 
 	getName() { return this.name; }
 
 	getSocketId() { return this.socketId; }
 	setSocketId(socketId) { this.socketId = socketId; }
-
-	getActive() { return this.active; }
-	setActive(active) { this.active = active; }
 };
 
 class UserList {
@@ -43,6 +39,7 @@ class UserList {
 		this.users = {};
 		this.activeUsers = new Set();
 		this.thinkerOrder = [];
+		this.currentQuestioner = "";
 	}
 
 	/**
@@ -52,7 +49,7 @@ class UserList {
 		//Existing Username
 		if(u.getName() in this.users) {
 			//stil active, don't overwrite
-			if(this.users[u.getName()].getActive() === true)
+			if(this.activeUsers.has(u.getName()))
 				throw new CustomError("Already active user : [" + u.getName() + "]");
 		} else {
 			this.thinkerOrder.push(u.getName());
@@ -88,7 +85,6 @@ class UserList {
 			this.activeUsers.delete(userName);
 			this.thinkerOrder = this.thinkerOrder.filter(arrayItem => arrayItem !== userName);
 			console.log("Removed user : " + userName);
-
 		}
 		this.print();
 	}
@@ -117,6 +113,33 @@ class UserList {
 			throw new CustomError("Thinker list not populated");
 		var first = this.thinkerOrder.shift();
 		this.thinkerOrder.push(first);
+	}
+
+	/**
+	API: setCurrentQuestioner
+	*/
+	setCurrentQuestioner(userName) {
+		if(this.currentQuestioner != "")
+			throw new CustomError(this.currentQuestioner + " is already asking a question");
+		if(this.activeUsers.has(userName) == false)
+			throw new CustomError("Inactive user");
+		this.currentQuestioner = userName;
+	}
+
+	/**
+	API: resetCurrentQuestioner
+	*/
+	resetCurrentQuestioner() {
+		this.currentQuestioner = "";
+	}
+
+	/**
+	API: getCurrentQuestioner
+	*/
+	getCurrentQuestioner() {
+		if(this.currentQuestioner === "") 
+			throw new CustomError("currentQuestioner is empty");
+		this.currentQuestioner;
 	}
 
 	print() {

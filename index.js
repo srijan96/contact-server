@@ -2,7 +2,7 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 5000;
-//require('./users.js')();
+require('./users.js')();
 
 const levenshtein = require('js-levenshtein');
 
@@ -26,7 +26,7 @@ var gameStarted = false;
 var questionTimeout = 0     // questionTimeout Variable 
 var hasThinkerAnswered = 0; // boolean to keep track if thinker has answered or not
 
-//var players = new UserList();
+var players = new UserList();
 
 function logState() {
 	/*console.log("========================");
@@ -44,7 +44,7 @@ function logState() {
 
 io.on('connection', function(socket){
   socket.on('disconnect', function() {
-    //players.disconnect(socket.id);
+    players.disconnect(socket.id);
     console.log(socket.id + " disconnected");
     for(var i=0;i<leaderBoard.length;i++) {
       if(leaderBoard[i][2] === socket.id) {
@@ -77,11 +77,11 @@ io.on('connection', function(socket){
   });
   //Handle Add User
   socket.on('add user', function(user){
-    /*try {
+    try {
       players.connect(new User(user, socket.id));
     } catch(err) {
       console.log("Error : " + err);
-    }*/
+    }
     
   	console.log("Adding user from socket : " + socket.id);
     
