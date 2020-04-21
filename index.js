@@ -64,6 +64,21 @@ io.on('connection', function(socket){
           current_players.splice(current_players.indexOf(leaving_user), 1);
           io.emit("chat message", leaderBoard[i][0] + " left the game");
         }
+
+        if (current_players.length == 0) {
+          io.emit('game end');
+          current_word = "";
+          revealed_length = 1;
+          current_question = "";
+          current_answer = "";
+          current_questioner = "";
+          contacts = [];
+          leaderBoard = [];
+          lockState = "";
+          currentThinker = 0;
+          gameStarted = false;
+        }
+
         leaderBoard[i][2] = "";
         io.emit("refresh data", leaderBoard);
         break;
