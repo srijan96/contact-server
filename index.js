@@ -77,6 +77,7 @@ io.on('connection', function(socket){
           lockState = "";
           currentThinker = 0;
           gameStarted = false;
+          break;
         }
 
         leaderBoard[i][2] = "";
