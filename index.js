@@ -1,11 +1,6 @@
 var app = require('express')();
 var http = require('http').Server(app);
-var io = require('socket.io')(http, {
-  transports: ['websocket'],
-  allowUpgrades: false,
-  pingInterval: 25000,
-  pingTimeout: 60000
-});
+var io = require('socket.io')(http);
 
 var port = process.env.PORT || 5000;
 
