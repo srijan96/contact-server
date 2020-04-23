@@ -48,7 +48,7 @@ function logState() {
 function sendHeartbeat(){
   setTimeout(sendHeartbeat, 8000);
   io.emit('EV: PING', { beat : 1 });
-  console.log("PING SENT TO CLIENT");
+  console.log("EV: PING SENT TO CLIENT");
 }
 
 
@@ -56,7 +56,7 @@ io.on('connection', function(socket){
 
   socket.on('EV: PONG', function(data){
     console.log(data);
-    console.log("PONG RECEIVED FROM CLIENT: " + data);
+    console.log("EV: PONG RECEIVED FROM CLIENT: " + data);
   });
   
   socket.on('disconnect', function(reason) {
