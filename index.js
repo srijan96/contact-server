@@ -45,7 +45,20 @@ function logState() {
   console.log("current_players = " + current_players);
 }
 
+function sendHeartbeat(){
+  setTimeout(sendHeartbeat, 8000);
+  io.emit('EV: PING', { beat : 1 });
+  console.log("PING SENT TO CLIENT");
+}
+
+
 io.on('connection', function(socket){
+
+  socket.on('EV: PONG', function(data){
+    console.log(data);
+    console.log("PONG RECEIVED FROM CLIENT: " + data);
+  });
+  
   socket.on('disconnect', function(reason) {
     console.log(socket.id + " disconnected due to: " + reason);
     for(var i=0;i<leaderBoard.length;i++) {
@@ -435,3 +448,4 @@ http.listen(port, function(){
   console.log('listening on *:' + port);
 });
 
+setTimeout(sendHeartbeat, 8000);
