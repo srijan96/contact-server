@@ -46,7 +46,7 @@ function logState() {
 }
 
 function sendHeartbeat(){
-  setTimeout(sendHeartbeat, 8000);
+  setTimeout(sendHeartbeat, 30000);
   io.emit('EV: PING', { beat : 1 });
   console.log("EV: PING SENT TO CLIENT");
 }
@@ -448,4 +448,4 @@ http.listen(port, function(){
   console.log('listening on *:' + port);
 });
 
-setTimeout(sendHeartbeat, 8000);
+setTimeout(sendHeartbeat, 30000);
